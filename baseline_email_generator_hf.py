@@ -39,7 +39,7 @@ def query(payload: dict, API_URL: str, headers: dict):
 
 
 # Submits a prompt (combination of system prompt and user prompt) to the model for generation.
-def submit_prompt(system_prompt: str, prompt: str, config: dict, return_only_generated: bool = False):
+def submit_prompt(system_prompt: str, prompt: str, config: dict):
 
     # Combine system and user prompts to form a single turn prompt with input template
     single_turn_prompt = f"{system_prompt}<|end_of_turn|>GPT4 Correct User: {prompt}" \
@@ -56,13 +56,14 @@ def submit_prompt(system_prompt: str, prompt: str, config: dict, return_only_gen
 
     # Send the payload to the model via the query function
     completion = query(payload=payload, API_URL=config['API_URL'], headers=create_headers(config))
-    print(completion)
+
     if isinstance(completion, list) and len(completion) > 0 and 'generated_text' in completion[0]:
         # Extract the generated text from the completion
         result = completion[0]['generated_text']
-        if return_only_generated:
-            result = result.split("<|end_of_turn|>GPT4 Correct Assistant:")[-1]
-        return result
+
+        # Split result into input(prompts + template) and generated text
+        generated_text = result.split("<|end_of_turn|>GPT4 Correct Assistant: ")[-1]
+        return single_turn_prompt, generated_text
     else:
         # Print an error message if something went wrong
         return print('Something went wrong:\n', completion)
@@ -82,8 +83,8 @@ def main(sys_prompt, user_prompt, config_name, result_file_name):
     sys_prompt = read_prompt(f"system_prompt/{sys_prompt}")
     user_prompt = read_prompt(f"user_prompt/{user_prompt}")
 
-    result = submit_prompt(sys_prompt, user_prompt, config)
-    write_results(result, result_file_name)
+    single_turn_prompt, generated_text = submit_prompt(sys_prompt, user_prompt, config)
+    write_results(generated_text, result_file_name)
 
 
 if __name__ == '__main__':
