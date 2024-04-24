@@ -1,8 +1,10 @@
 import argparse
 import csv
-from baseline_email_generator_huggingface import get_config, submit_prompt
 import datetime
 import time
+from transformers import AutoTokenizer
+from baseline_email_generator_hf import get_config, submit_prompt
+
 
 def read_csv_file(csv_path: str):
     """
@@ -42,19 +44,25 @@ def main(csv_path, config_name, output_file):
     config = get_config(config_name)
     # Read the csv data
     csv_data = read_csv_file(f'input/{csv_path}')
+    # Load tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(config['model_name'])
 
     for turn in csv_data:
         start_time = time.time()
 
         # Generate data using the provided prompts and configuration
-        generated_text = submit_prompt(turn['System'], turn['User'], config, True)
+        single_turn_prompt, generated_text = submit_prompt(turn['System'], turn['User'], config)
 
         # Calculate execution time
         execution_time = time.time() - start_time
 
-        # Update the 'output', 'execution time', and 'tokens used' columns
+        # Count tokens using tokenizer
+        token_count = len(tokenizer(single_turn_prompt)["input_ids"])
+
+        # Update the 'output', 'execution time', and 'token_used' columns
         turn['output'] = generated_text
         turn['execution time'] = execution_time
+        turn['tokens used'] = token_count
 
     # Write the updated data to a new CSV file
     write_csv_output(csv_data, output_file)
